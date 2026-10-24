@@ -106,13 +106,6 @@ bad = [k for k in cum.columns if (cum[k].abs() > turn[k] + 1e-6).any()]
 if bad:
     print(f"WARNING: flow > turnover for {bad}", file=sys.stderr)
 
-
-med = T.replace(0, float("nan")).median()      # each stock's median 5-min turnover
-scale = (10 * med / T).clip(upper=1).fillna(1)  # only shrinks bars over 10x the median
-for name, D in [("raw", F), ("capped", F * scale)]:
-    print(name, by_sec(D).sum().round(0).to_dict())
-
-
 out = {
     "total": len(sector),
     "failed": failed,
