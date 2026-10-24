@@ -1,3 +1,41 @@
-   - uses: actions/setup-python@v5
-     with:
-       python-version: "3.12"
+name: sector-flow
+
+on:
+  schedule:
+    - cron: "*/5 13-21 * * 1-5"   # UTC; covers US market hours in both EDT and EST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sector-flow
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests pandas lxml
+
+      - run: python fetch_sector_flow.py
+
+      - name: Commit JSON
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add sector_flow.json
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "sector flow"
+            git pull --rebase origin main
+            git push origin main
+          fi
