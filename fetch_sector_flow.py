@@ -116,3 +116,5 @@ out = {
 with open("sector_flow.json", "w", encoding="utf-8") as fh:
     json.dump(out, fh, ensure_ascii=False)
 print("wrote sector_flow.json,", len(out["times"]), "bars")
+
+out = {"total": len(sector), "failed": failed, ...}  # 其餘不變
