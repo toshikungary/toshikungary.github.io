@@ -107,7 +107,7 @@ if bad:
     print(f"WARNING: flow > turnover for {bad}", file=sys.stderr)
 
 out = {
-    "total": total,
+    "total": len(sector),
     "failed": failed,
     "times": [int(t) for t in cum.index],
     "series": {k: cum[k].round(0).tolist() for k in cum.columns},
@@ -115,6 +115,3 @@ out = {
 }
 with open("sector_flow.json", "w", encoding="utf-8") as fh:
     json.dump(out, fh, ensure_ascii=False)
-print("wrote sector_flow.json,", len(out["times"]), "bars")
-
-out = {"total": len(sector), "failed": failed, ...}  # 其餘不變
