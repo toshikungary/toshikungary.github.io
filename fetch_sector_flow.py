@@ -106,6 +106,14 @@ bad = [k for k in cum.columns if (cum[k].abs() > turn[k] + 1e-6).any()]
 if bad:
     print(f"WARNING: flow > turnover for {bad}", file=sys.stderr)
 
+tot = F.sum()
+for s in tot.abs().sort_values(ascending=False).head(15).index:
+    print(s, ZH[sector[s]], round(tot[s]), "turnover", round(T[s].sum()))
+for (t, s), v in T.stack().sort_values(ascending=False).head(8).items():
+    print("bar", s, ZH[sector[s]],
+          pd.to_datetime(t, unit="s", utc=True).tz_convert("America/New_York").strftime("%H:%M"),
+          round(v))
+
 out = {
     "total": len(sector),
     "failed": failed,
