@@ -4,6 +4,8 @@ Output: sector_flow.json  (read by the Scriptable widget)
 
 flow     = sum( MFM * typical_price * volume ) / 1e6,  MFM = ((C-L)-(H-C))/(H-L)
 turnover = sum( typical_price * volume ) / 1e6   (so |flow| <= turnover always holds)
+ratio    = flow / turnover  (computed in the widget; fair comparison across sector sizes)
+breadth  = share of a sector's stocks with positive cumulative flow (0..1)
 """
 import json
 import sys
@@ -92,14 +94,21 @@ if len(failed) > total * MAX_FAIL_RATIO:
 # ---- 3. aggregate by sector, cumulative over time ----
 F = pd.DataFrame(flows).fillna(0).sort_index()
 T = pd.DataFrame(turns).fillna(0).sort_index()
+T = T.reindex(columns=F.columns, fill_value=0)
+
+sec_of = pd.Series({s: ZH[sector[s]] for s in F.columns})
 
 
 def by_sec(D):
-    return D.T.groupby(lambda s: ZH[sector[s]]).sum().T
+    return D.T.groupby(sec_of.reindex(D.columns)).sum().T
 
 
 cum = by_sec(F).cumsum()
 turn = by_sec(T).cumsum()
+
+# breadth: share of each sector's stocks with positive cumulative flow
+ratio = (F.sum() / T.sum().replace(0, float("nan"))).fillna(0)
+breadth = (ratio > 0).groupby(sec_of.reindex(ratio.index)).mean().round(3)
 
 # sanity check: |cum flow| must not exceed turnover
 bad = [k for k in cum.columns if (cum[k].abs() > turn[k] + 1e-6).any()]
@@ -107,11 +116,13 @@ if bad:
     print(f"WARNING: flow > turnover for {bad}", file=sys.stderr)
 
 out = {
-    "total": len(sector),
+    "total": total,
     "failed": failed,
     "times": [int(t) for t in cum.index],
     "series": {k: cum[k].round(0).tolist() for k in cum.columns},
     "turnover": {k: turn[k].round(0).tolist() for k in turn.columns},
+    "breadth": {k: float(v) for k, v in breadth.items()},
 }
 with open("sector_flow.json", "w", encoding="utf-8") as fh:
     json.dump(out, fh, ensure_ascii=False)
+print("wrote sector_flow.json,", len(out["times"]), "bars")
