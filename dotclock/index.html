@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<title>Dot Clock</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dot Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root { --bg: #fcfcfc; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161616; } }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const USE_12H = true;      // false = 24-hour
+const DROP_MS = 500;       // fall duration of the orange dot
+
+const FONT = {
+  "0": [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
+  "1": [".#.", "##.", ".#.", ".#.", ".#.", ".#.", "###"],
+  "2": [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+  "3": ["#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###."],
+  "4": ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+  "5": ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+  "6": ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+  "7": ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+  "8": [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+  "9": [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."]
+};
+
+function buildCells(h, m, s) {
+  const cells = [];
+  const put = (txt, r0) => {
+    let c0 = 0;
+    for (const ch of txt) {
+      FONT[ch].forEach((row, r) =>
+        [...row].forEach((v, c) => { if (v === "#") cells.push([c0 + c, r0 + r, "on"]); })
+      );
+      c0 += 6;
+    }
+  };
+  put(String(h).padStart(2, "0"), 0);
+  put(String(m).padStart(2, "0"), 9);
+  for (let i = 0; i < 60; i++) {
+    cells.push([13 + (i % 4), 15 - Math.floor(i / 4), i < s ? "on" : i === s ? "cur" : "off"]);
+  }
+  return cells;
+}
+
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+const dm = matchMedia("(prefers-color-scheme: dark)");
+
+function frame() {
+  const d = new Date(), s = d.getSeconds(), f = d.getMilliseconds();
+  let h = d.getHours(); if (USE_12H) h = h % 12 || 12;
+  const dpr = devicePixelRatio || 1;
+  const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+  const dark = dm.matches;
+  const col = { on: dark ? "#f2f2f2" : "#2b2b2b", off: dark ? "#2a2a2a" : "#ececec", cur: "#ff6a1a" };
+  const p = Math.min(W / 19, H / 18), x0 = (W - 16 * p) / 2, y0 = (H - 15 * p) / 2, r = p * 0.36;
+  for (const [c, rw, k] of buildCells(h, d.getMinutes(), s)) {
+    let y = rw;
+    if (k === "cur") { const t = Math.min(1, f / DROP_MS); y = -1.5 + (rw + 1.5) * t * t; } // gravity-style drop
+    g.fillStyle = col[k];
+    g.beginPath(); g.arc(x0 + c * p, y0 + y * p, r, 0, Math.PI * 2); g.fill();
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
